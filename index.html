@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Tenageer</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" />
+  <!-- Firebase SDK — compat mode (работает без secret!) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --card: #252525;
+      --text: #f5f5f5;
+      --text-secondary: #b0b0b0;
+      --accent: #bb86fc;
+      --accent-light: #d7b8ff;
+      --border: #333;
+      --radius: 16px;
+      --shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding-bottom: 2rem;
+    }
+
+    header {
+      text-align: center;
+      padding: 2rem 1.5rem 1.2rem;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      position: relative;
+      overflow: hidden;
+    }
+
+    header h1 {
+      font-size: 2.4rem;
+      background: linear-gradient(to right, #e0b0ff, var(--accent-light));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 0.8rem;
+      padding: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-btn {
+      background: var(--card);
+      color: var(--text);
+      border: none;
+      padding: 0.6rem 1rem;
+      border-radius: 50px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .nav-btn:hover, .nav-btn.active { background: var(--accent); color: #000; }
+
+    .category { display: none; padding: 1.5rem 1.2rem; }
+    .category.active { display: block; animation: fadeIn 0.4s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .post, .form-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 1.3rem;
+      margin-bottom: 1.3rem;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .post-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--surface);
+      border: 2px solid var(--accent);
+    }
+
+    .post-author {
+      font-weight: 600;
+      color: var(--accent-light);
+    }
+
+    .post-title {
+      font-size: 1.35rem;
+      margin-bottom: 8px;
+      color: white;
+    }
+
+    .post-content {
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .delete-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255, 82, 82, 0.2);
+      color: #ff6b6b;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .post:hover .delete-btn {
+      opacity: 1;
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 0.8rem;
+      margin-bottom: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: inherit;
+    }
+
+    .user-info {
+      text-align: center;
+      padding: 1rem;
+      color: var(--accent-light);
+    }
+
+    .user-info img {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      margin-bottom: 8px;
+      border: 2px solid var(--accent);
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.5rem 1rem 1rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 768px) {
+      header h1 { font-size: 2rem; }
+      .post, .form-card { padding: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Tenageer</h1>
+    <p>Твоё творчество — твой голос</p>
+  </header>
+
+  <div class="user-info" id="userInfo">
+    <!-- Здесь будет аватар + имя -->
+  </div>
+
+  <nav>
+    <button class="nav-btn active" data-category="form">➕ Новый пост</button>
+    <button class="nav-btn" data-category="games">🎮 Игры</button>
+    <button class="nav-btn" data-category="books">📚 Книги</button>
+    <button class="nav-btn" data-category="comics">🖍️ Комиксы</button>
+  </nav>
+
+  <main>
+    <section id="form" class="category active">
+      <div class="form-card">
+        <h2>Опубликовать своё творчество</h2>
+        <input type="text" id="title" placeholder="Название (например, «Neon Runner»)" required />
+        <textarea id="content" placeholder="Описание твоего проекта..." rows="4" required></textarea>
+        <select id="categorySelect">
+          <option value="games">🎮 Игра</option>
+          <option value="books">📚 Книга / рассказ</option>
+          <option value="comics">🖍️ Комикс</option>
+          <option value="collab">🤝 Ищу команду</option>
+        </select>
+        <button class="btn" id="submitPost">Опубликовать</button>
+      </div>
+    </section>
+
+    <section id="games" class="category"><h2>🎮 Игры</h2><div id="gamesList"></div></section>
+    <section id="books" class="category"><h2>📚 Книги</h2><div id="booksList"></div></section>
+    <section id="comics" class="category"><h2>🖍️ Комиксы</h2><div id="comicsList"></div></section>
+    <section id="collab" class="category"><h2>🤝 Коллаборации</h2><div id="collabList"></div></section>
+  </main>
+
+  <footer>
+    <p>© 2025 Tenageer — создано подростками</p>
+  </footer>
+
+  <script>
+    // 🔥 ТВОЙ FIREBASE CONFIG — НЕ МЕНЯЙ!
+    const firebaseConfig = {
+      apiKey: "AIzaSyDihrA8V1G3BPXvfRt31hN0PkrwZwmuLsE",
+      authDomain: "teenageer-d3f92.firebaseapp.com",
+      projectId: "teenageer-d3f92",
+      storageBucket: "teenageer-d3f92.firebasestorage.app",
+      messagingSenderId: "621778986429",
+      appId: "1:621778986429:web:2458cc777f40ba39265ed4",
+      measurementId: "G-EKCKKM9HND"
+    };
+
+    // Инициализация Firebase в compat-режиме (без ошибки secret!)
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const userInfoEl = document.getElementById('userInfo');
+    const submitBtn = document.getElementById('submitPost');
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        const photo = user.photoURL ? user.photoURL + '?sz=50' : 'https://via.placeholder.com/50/252525/FFFFFF?text=?';
+        userInfoEl.innerHTML = `
+          <img src="${photo}" alt="Аватар" onerror="this.src='https://via.placeholder.com/50/252525/FFFFFF?text=?'">
+          <p>Привет, <strong>${user.displayName || 'друг'}</strong>! 👋</p>
+          <button class="btn" onclick="signOut()">Выйти</button>
+        `;
+        loadPosts();
+      } else {
+        userInfoEl.innerHTML = `
+          <button class="btn" onclick="signInWithGoogle()">Войти через Google</button>
+        `;
+      }
+    });
+
+    window.signInWithGoogle = () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).catch(err => {
+        alert('Ошибка входа: ' + err.message);
+      });
+    };
+
+    window.signOut = () => auth.signOut();
+
+    submitBtn.addEventListener('click', async () => {
+      const user = auth.currentUser;
+      if (!user) return alert('Сначала войди через Google!');
+      const title = document.getElementById('title').value.trim();
+      const content = document.getElementById('content').value.trim();
+      const category = document.getElementById('categorySelect').value;
+      if (!title || !content) return alert('Заполни все поля!');
+
+      try {
+        await db.collection('posts').add({
+          title,
+          content,
+          category,
+          author: user.displayName || user.email,
+          authorId: user.uid,
+          authorPhoto: user.photoURL || null,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        document.getElementById('title').value = '';
+        document.getElementById('content').value = '';
+        alert('Пост опубликован! 🎉');
+        loadPosts();
+      } catch (err) {
+        alert('Ошибка: ' + err.message);
+      }
+    });
+
+    window.deletePost = async (postId, event) => {
+      event.stopPropagation();
+      if (!confirm('Удалить пост? Это нельзя отменить.')) return;
+      try {
+        await db.collection('posts').doc(postId).delete();
+        loadPosts();
+      } catch (err) {
+        alert('Ошибка удаления: ' + err.message);
+      }
+    };
+
+    async function loadPosts() {
+      const lists = { games: [], books: [], comics: [], collab: [] };
+      const user = auth.currentUser;
+      try {
+        const snapshot = await db.collection('posts').orderBy('createdAt', 'desc').get();
+        snapshot.forEach(doc => {
+          const post = { id: doc.id, ...doc.data() };
+          if (lists[post.category]) lists[post.category].push(post);
+        });
+
+        for (const cat in lists) {
+          const container = document.getElementById(`${cat}List`);
+          container.innerHTML = '';
+          lists[cat].forEach(post => {
+            const isOwner = user && user.uid === post.authorId;
+            const photo = post.authorPhoto ? post.authorPhoto + '?sz=40' : 'https://via.placeholder.com/40/252525/FFFFFF?text=?';
+            const el = document.createElement('div');
+            el.className = 'post';
+            el.innerHTML = `
+              <div class="post-header">
+                <img class="avatar" src="${photo}" onerror="this.src='https://via.placeholder.com/40/252525/FFFFFF?text=?'">
+                <div class="post-author">${post.author}</div>
+              </div>
+              <div class="post-title">${post.title}</div>
+              <div class="post-content">${post.content}</div>
+              ${isOwner ? `<button class="delete-btn" onclick="deletePost('${post.id}', event)">🗑️</button>` : ''}
+            `;
+            container.appendChild(el);
+          });
+        }
+      } catch (err) {
+        console.error('Ошибка загрузки постов:', err);
+      }
+    }
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.category').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        const cat = btn.getAttribute('data-category');
+        document.getElementById(cat).classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>
